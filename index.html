@@ -3,394 +3,540 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>家务审计系统</title>
-    <!-- 引入 Tailwind CSS -->
+    <title>家庭劳动审计系统 3.6</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 引入 React 和 ReactDOM -->
     <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
-    <!-- 引入 Babel 用于浏览器内编译 JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-
     <style>
-        /* 简单的淡入动画 */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
-        }
-        .animate-in {
-            animation: fadeIn 0.2s ease-out forwards;
-        }
+        body { background-color: #F8FAFC; }
+        .glass-card { background: white; border: 1px solid #F1F5F9; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02), 0 10px 15px -3px rgba(0, 0, 0, 0.02); }
+        .tap-effect:active { transform: scale(0.98); transition: transform 0.1s; }
+        .slide-down { animation: slideDown 0.3s cubic-bezier(0.16, 1, 0.3, 1); }
+        .fade-in { animation: fadeIn 0.2s ease-out; }
+        @keyframes slideDown { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* 范围滑块自定义 */
+        input[type=range] { -webkit-appearance: none; background: transparent; }
+        input[type=range]::-webkit-slider-thumb { -webkit-appearance: none; height: 24px; width: 24px; border-radius: 50%; background: white; border: 2px solid #6366F1; cursor: pointer; margin-top: -10px; box-shadow: 0 2px 6px rgba(99, 102, 241, 0.3); transition: transform 0.1s; }
+        input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.1); }
+        input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #E0E7FF; border-radius: 3px; }
     </style>
 </head>
-<body class="bg-slate-50">
+<body class="text-slate-800 antialiased font-sans">
     <div id="root"></div>
 
     <script type="text/babel">
-        const { useState, useEffect } = React;
+        const { useState, useEffect, useMemo } = React;
 
-        // --- 图标组件 (SVG) ---
-        const IconBase = ({ d, className, ...props }) => (
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className} {...props}>{d}</svg>
-        );
-
-        const Wallet = (p) => <IconBase d={<><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" /><path d="M3 5v14a2 2 0 0 0 2 2h16v-5" /><path d="M18 12a2 2 0 0 0 0 4h4v-4Z" /></>} {...p} />;
-        const Sparkles = (p) => <IconBase d={<><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" /><path d="M5 3v4" /><path d="M9 3v4" /><path d="M3 5h4" /><path d="M3 9h4" /></>} {...p} />;
-        const ChefHat = (p) => <IconBase d={<><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z" /><line x1="6" y1="17" x2="18" y2="17" /></>} {...p} />;
-        const Baby = (p) => <IconBase d={<><path d="M9 12h.01" /><path d="M15 12h.01" /><path d="M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5" /><path d="M19 6.3a9 9 0 0 1 1.8 3.9 2 2 0 0 1 0 3.6 9 9 0 0 1-17.6 0 2 2 0 0 1 0-3.6A9 9 0 0 1 12 3c2 0 3.5 1.1 3.5 2.5s-.9 2.5-2 2.5c-.8 0-1.5-.4-1.5-1" /></>} {...p} />;
-        const SprayCan = (p) => <IconBase d={<><path d="M3 3h.01" /><path d="M7 5h.01" /><path d="M11 7h.01" /><path d="M3 7h.01" /><path d="M7 9h.01" /><path d="M3 11h.01" /><rect width="4" height="4" x="15" y="5" rx="1" /><path d="m19 9 2 2v10c0 .6-.4 1-1 1h-6c-.6 0-1-.4-1-1v-6.6c0-.52.2-1.02.57-1.38L16 9.6" /></>} {...p} />;
-        const HeartHandshake = (p) => <IconBase d={<><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z" /><path d="M12 5 9.04 7.96a2.17 2.17 0 0 0 0 3.08v0c.82.82 2.13.85 3 .07l2.07-1.9a2.82 2.82 0 0 1 3.15-.49 2.87 2.87 0 0 1 1.08 3.08" /></>} {...p} />;
-        const FileText = (p) => <IconBase d={<><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /><line x1="16" y1="13" x2="8" y2="13" /><line x1="16" y1="17" x2="8" y2="17" /><line x1="10" y1="9" x2="8" y2="9" /></>} {...p} />;
-        const Share2 = (p) => <IconBase d={<><circle cx="18" cy="5" r="3" /><circle cx="6" cy="12" r="3" /><circle cx="18" cy="19" r="3" /><line x1="8.59" y1="13.51" x2="15.42" y2="17.49" /><line x1="15.41" y1="6.51" x2="8.59" y2="10.49" /></>} {...p} />;
-        const TrendingUp = (p) => <IconBase d={<><polyline points="23 6 13.5 15.5 8.5 10.5 1 18" /><polyline points="17 6 23 6 23 12" /></>} {...p} />;
-        const History = (p) => <IconBase d={<><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l4 2" /></>} {...p} />;
-        const X = (p) => <IconBase d={<><path d="M18 6 6 18" /><path d="m6 6 12 12" /></>} {...p} />;
-        const Plus = (p) => <IconBase d={<><path d="M5 12h14" /><path d="M12 5v14" /></>} {...p} />;
-
-        // --- 应用配置 ---
-        const MARKET_RATES = {
-            cleaning: { rate: 60, label: "家庭保洁", icon: SprayCan, color: "bg-sky-100 text-sky-600" },
-            cooking: { rate: 80, label: "营养膳食", icon: ChefHat, color: "bg-orange-100 text-orange-600" },
-            childcare: { rate: 150, label: "育儿辅导", icon: Baby, color: "bg-rose-100 text-rose-600" },
-            emotion: { rate: 300, label: "情绪价值", icon: HeartHandshake, color: "bg-purple-100 text-purple-600" },
-            admin: { rate: 100, label: "家庭统筹", icon: FileText, color: "bg-indigo-100 text-indigo-600" },
+        // --- 图标组件 ---
+        const Icon = ({ d, className }) => <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{d}</svg>;
+        const Icons = {
+            Settings: <Icon d={<><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.1a2 2 0 0 1-1-1.72v-.51a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></>} />,
+            Sparkles: <Icon d={<><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L12 3Z"/><path d="M5 3v4"/><path d="M9 3v4"/></>} />,
+            Chef: <Icon d={<><path d="M6 13.87A4 4 0 0 1 7.41 6a5.11 5.11 0 0 1 1.05-1.54 5 5 0 0 1 7.08 0A5.11 5.11 0 0 1 16.59 6 4 4 0 0 1 18 13.87V21H6Z"/><line x1="6" y1="17" x2="18" y2="17"/></>} />,
+            Baby: <Icon d={<><path d="M9 12h.01"/><path d="M15 12h.01"/><path d="M10 16c.5.3 1.2.5 2 .5s1.5-.2 2-.5"/><path d="M19 6.3a9 9 0 0 1 1.8 3.9 2 2 0 0 1 0 3.6 9 9 0 0 1-17.6 0 2 2 0 0 1 0-3.6A9 9 0 0 1 12 3c2 0 3.5 1.1 3.5 2.5s-.9 2.5-2 2.5c-.8 0-1.5-.4-1.5-1"/></>} />,
+            Clean: <Icon d={<><path d="M3 3h.01"/><path d="M7 5h.01"/><rect width="4" height="4" x="15" y="5" rx="1"/><path d="m19 9 2 2v10c0 .6-.4 1-1 1h-6c-.6 0-1-.4-1-1v-6.6c0-.52.2-1.02.57-1.38L16 9.6"/></>} />,
+            Heart: <Icon d={<><path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.3 1.5 4.05 3 5.5l7 7Z"/></>} />,
+            Admin: <Icon d={<><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/></>} />,
+            Bulb: <Icon d={<><path d="M15 14c.2-1 .7-1.7 1.5-2.5 1-1 1.5-2 1.5-3.5A6 6 0 0 0 6 8c0 1 .2 2.2 1.5 3.5.7.7 1.3 1.5 1.5 2.5"/><path d="M9 18h6"/><path d="M10 22h4"/></>} />,
+            Scale: <Icon d={<><path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/><path d="M7 21h10"/><path d="M12 3v18"/><path d="M3 7h2c2 0 5-1 7-2 2 1 5 2 7 2h2"/></>} />,
+            ArrowRight: <Icon d={<><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></>} />,
+            Info: <Icon d={<><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></>} />,
+            Plus: <Icon d={<><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></>} />,
+            Trash: <Icon d={<><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></>} />,
+            Edit: <Icon d={<><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></>} />,
+            Star: <Icon d={<><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></>} />
         };
 
-        // 按类别定制的情绪价值文案库
-        const CATEGORY_PRAISE = {
-            cleaning: [
-                "扫除的不仅是尘埃，更是生活的烦恼。您让这个家重焕光彩，这份洁净带来的舒适感，是最高级的治愈。",
-                "看似重复的擦拭，实则是对生活品质的坚持。地板上的光亮映射着您对家的热爱，感谢您守护了我们的舒适圈。"
-            ],
-            cooking: [
-                "厨房的烟火气，是这个家最温暖的底色。您投入的不仅是食材，更是对家人的关爱，每一口都是幸福的味道。",
-                "比起外卖的便捷，您做的饭菜里藏着无价的心意。感谢您用美味滋养了全家人的胃和心，这是最顶级的营养师服务。"
-            ],
-            childcare: [
-                "在育儿上的每一份耐心，都是给孩子未来的储蓄。您不仅仅是陪伴，更是在小心翼翼地呵护一颗幼小的心灵。",
-                "数据无法计算您付出的心力。您用温柔编织了孩子的安全感，这是金钱买不到的成长礼物，您是孩子心中最好的榜样。"
-            ],
-            emotion: [
-                "您是家庭的隐形支柱。在家人疲惫时提供的倾听与支持，是维系家庭稳固的最强粘合剂，这份温柔价值连城。",
-                "情绪价值是奢侈品，而您慷慨地将其给予了这个家。感谢您如定海神针般的存在，安抚了所有的焦虑与不安。"
-            ],
-            admin: [
-                "您是家庭的幕后CEO。琐碎的统筹规划，保证了生活的有序运转，您的智慧让这个家井井有条，高效又温馨。",
-                "看似平淡的日常，全靠您的精心调度。感谢您承担了最耗费心力的管理工作，让家人得以享受无忧的生活。"
-            ],
-            default: [
-                "您是这个家不可或缺的合伙人。每一分钟的付出，都化作了家庭的温暖与安稳。辛苦了，您的爱值得被看见。",
-                "经审计，您的付出极大地提升了家庭幸福指数。无论是体力还是心力，您都做到了极致，请务必为自己感到骄傲。"
-            ]
-        };
+        const DEFAULT_CATEGORIES = [
+            { id: 'cleaning', label: "保洁", icon: Icons.Clean, textCol: "text-sky-600", borderCol: "border-sky-500", bgCol: "bg-sky-50", rate: 60, task: "全屋吸尘", isFamily: false },
+            { id: 'cooking', label: "烹饪", icon: Icons.Chef, textCol: "text-orange-600", borderCol: "border-orange-500", bgCol: "bg-orange-50", rate: 80, task: "准备晚餐", isFamily: false },
+            { id: 'childcare', label: "育儿", icon: Icons.Baby, textCol: "text-rose-600", borderCol: "border-rose-500", bgCol: "bg-rose-50", rate: 150, task: "绘本阅读", isFamily: true },
+            { id: 'emotion', label: "情绪", icon: Icons.Heart, textCol: "text-purple-600", borderCol: "border-purple-500", bgCol: "bg-purple-50", rate: 300, task: "深度倾听", isFamily: true },
+            { id: 'admin', label: "统筹", icon: Icons.Admin, textCol: "text-indigo-600", borderCol: "border-indigo-500", bgCol: "bg-indigo-50", rate: 100, task: "生活缴费", isFamily: false },
+        ];
 
-        // --- 主组件 ---
-        function FamilyLaborAudit() {
-            const [totalAsset, setTotalAsset] = useState(0);
-            const [totalHours, setTotalHours] = useState(0);
-            const [records, setRecords] = useState([]);
-            const [selectedCategory, setSelectedCategory] = useState('cleaning');
-            const [duration, setDuration] = useState(60);
-            const [showReport, setShowReport] = useState(false);
-            const [reportContent, setReportContent] = useState(null);
-            const [isAnimating, setIsAnimating] = useState(false);
+        function App() {
+            const [mode, setMode] = useState('family'); // 'personal' | 'family'
+            const [showSettings, setShowSettings] = useState(false);
+            const [showAllocation, setShowAllocation] = useState(false);
+            const [jobHours, setJobHours] = useState({ me: 8, partner: 8 });
 
-            useEffect(() => {
-                const savedRecords = [
-                    { id: 1, category: 'cooking', duration: 45, value: 60, date: new Date(Date.now() - 86400000).toISOString() },
-                    { id: 2, category: 'cleaning', duration: 60, value: 60, date: new Date(Date.now() - 172800000).toISOString() },
-                ];
-                setRecords(savedRecords);
-                recalculateTotals(savedRecords);
-            }, []);
+            // 类别管理状态
+            const [categories, setCategories] = useState(DEFAULT_CATEGORIES);
+            const [isEditingCats, setIsEditingCats] = useState(false);
+            const [showAddCat, setShowAddCat] = useState(false);
+            const [newCatName, setNewCatName] = useState("");
+            const [newCatRate, setNewCatRate] = useState(60);
 
-            const recalculateTotals = (currentRecords) => {
-                const value = currentRecords.reduce((acc, curr) => acc + curr.value, 0);
-                const time = currentRecords.reduce((acc, curr) => acc + curr.duration, 0);
-                setTotalAsset(value);
-                setTotalHours(time / 60);
-            };
+            const [records, setRecords] = useState([
+                { id: 1, user: 'partner', category: 'cleaning', duration: 45, value: 45, date: new Date(Date.now() - 3600000).toISOString() },
+                { id: 2, user: 'me', category: 'childcare', duration: 180, value: 450, date: new Date().toISOString() },
+            ]);
 
-            const handleAddRecord = () => {
-                const rate = MARKET_RATES[selectedCategory].rate;
-                const value = (rate * (duration / 60));
+            // 默认选中第一个非家庭特有类别，防止切换到个人模式时选中隐藏类别
+            const [selectedCat, setSelectedCat] = useState(categories[0]);
+            const [tempDuration, setTempDuration] = useState(60);
 
-                const newRecord = {
+            // 过滤显示的类别
+            const visibleCategories = useMemo(() => {
+                if (mode === 'personal') {
+                    // 个人模式下，隐藏标记为 "isFamily" (育儿、情绪) 的类别，除非用户手动添加了它们(这里简化为只过滤默认的)
+                    // 或者更简单的逻辑：只显示非 isFamily 的
+                    // 考虑到用户自定义的类别默认为 isFamily: false
+                    return categories.filter(c => !c.isFamily);
+                }
+                return categories;
+            }, [categories, mode]);
+
+            // 统计
+            const stats = useMemo(() => {
+                const calc = (user) => {
+                    const userRecs = records.filter(r => r.user === user);
+                    const totalHome = userRecs.reduce((acc, r) => acc + r.duration, 0) / 60;
+                    const totalValue = userRecs.reduce((acc, r) => acc + r.value, 0);
+                    return { home: totalHome, job: jobHours[user], totalTime: totalHome + jobHours[user], totalValue };
+                };
+                return { me: calc('me'), partner: calc('partner') };
+            }, [records, jobHours]);
+
+            const confirmAdd = () => {
+                if (!selectedCat) return;
+                const value = (selectedCat.rate * tempDuration) / 60;
+                const newRec = {
                     id: Date.now(),
-                    category: selectedCategory,
-                    duration: duration,
+                    user: 'me',
+                    category: selectedCat.id,
+                    duration: tempDuration,
                     value: value,
                     date: new Date().toISOString()
                 };
-
-                const newRecords = [newRecord, ...records];
-                setRecords(newRecords);
-                recalculateTotals(newRecords);
-
-                setIsAnimating(true);
-                setTimeout(() => setIsAnimating(false), 500);
+                setRecords([newRec, ...records]);
             };
 
-            const generateReport = () => {
-                // 1. 找出价值贡献最高的类别
-                let topCategory = 'default';
-                if (records.length > 0) {
-                    // 按类别汇总价值
-                    const categoryTotals = records.reduce((acc, curr) => {
-                        acc[curr.category] = (acc[curr.category] || 0) + curr.value;
-                        return acc;
-                    }, {});
-                    // 排序找最大
-                    topCategory = Object.keys(categoryTotals).sort((a, b) => categoryTotals[b] - categoryTotals[a])[0];
+            // 添加新类别
+            const handleAddCategory = () => {
+                if (!newCatName) return;
+                const newId = `custom-${Date.now()}`;
+                const newCat = {
+                    id: newId,
+                    label: newCatName,
+                    icon: Icons.Star, // 默认图标
+                    textCol: "text-slate-600",
+                    borderCol: "border-slate-500",
+                    bgCol: "bg-slate-50",
+                    rate: parseInt(newCatRate),
+                    task: newCatName,
+                    isFamily: false // 自定义类别默认个人可见
+                };
+                setCategories([...categories, newCat]);
+                setNewCatName("");
+                setNewCatRate(60);
+                setShowAddCat(false);
+            };
+
+            // 删除类别
+            const handleDeleteCategory = (id) => {
+                // 不允许删除剩下一个
+                if (categories.length <= 1) return;
+                const newCats = categories.filter(c => c.id !== id);
+                setCategories(newCats);
+                if (selectedCat.id === id) {
+                    setSelectedCat(newCats[0]);
                 }
-
-                // 2. 根据类别获取特定语料
-                const praiseList = CATEGORY_PRAISE[topCategory] || CATEGORY_PRAISE.default;
-                const randomPraise = praiseList[Math.floor(Math.random() * praiseList.length)];
-
-                const avgHourlyRate = totalHours > 0 ? (totalAsset / totalHours).toFixed(0) : 0;
-
-                // 获取类别中文名，如果是 default 则显示"综合付出"
-                const topCategoryLabel = MARKET_RATES[topCategory] ? MARKET_RATES[topCategory].label : "综合家务";
-
-                setReportContent({
-                    totalValue: totalAsset.toFixed(0),
-                    totalHours: totalHours.toFixed(1),
-                    avgRate: avgHourlyRate,
-                    praise: randomPraise,
-                    date: new Date().toLocaleDateString(),
-                    dominantType: topCategoryLabel
-                });
-                setShowReport(true);
             };
 
-            const formatDuration = (mins) => {
-                const h = Math.floor(mins / 60);
-                const m = mins % 60;
-                if (h > 0 && m > 0) return `${h}小时 ${m}分钟`;
-                if (h > 0) return `${h}小时`;
-                return `${m}分钟`;
-            };
+            const allocationPlan = useMemo(() => {
+                const myTime = stats.me.totalTime;
+                const partnerTime = stats.partner.totalTime;
+                const totalTime = myTime + partnerTime;
+                const diff = myTime - partnerTime;
+
+                const myShare = totalTime > 0 ? (myTime / totalTime * 100).toFixed(0) : 50;
+                const partnerShare = totalTime > 0 ? (partnerTime / totalTime * 100).toFixed(0) : 50;
+
+                if (Math.abs(diff) < 0.5) return { status: 'balanced', message: '双方负荷基本平衡' };
+
+                const overloadUser = diff > 0 ? '我' : '伴侣';
+                const deficitUser = diff > 0 ? '伴侣' : '我';
+                const hoursToBalance = Math.abs(diff) / 2;
+
+                const recommendedCat = categories.find(c => c.rate >= 100) || categories[0];
+                const moneyValue = (hoursToBalance * recommendedCat.rate).toFixed(0);
+
+                return {
+                    status: 'imbalanced',
+                    overloadUser,
+                    deficitUser,
+                    hoursToBalance: hoursToBalance.toFixed(1),
+                    share: { me: myShare, partner: partnerShare },
+                    suggestions: [
+                        { type: 'time', title: '时间配平', desc: `${deficitUser} 本周需多承担 ${hoursToBalance.toFixed(1)}h 家务` },
+                        { type: 'value', title: '价值补偿', desc: `建议承担高价值任务，如“${recommendedCat.task}”` },
+                        { type: 'action', title: '立即行动', desc: `执行 2 次 ${recommendedCat.label} 即可平衡` }
+                    ],
+                    diff: Math.abs(diff).toFixed(1)
+                };
+            }, [stats, categories]);
+
+            const currentEstimateValue = ((selectedCat?.rate * tempDuration) / 60).toFixed(0);
+
+            // 根据模式过滤显示的记录
+            const displayRecords = useMemo(() => {
+                if (mode === 'personal') {
+                    return records.filter(r => r.user === 'me');
+                }
+                return records;
+            }, [records, mode]);
 
             return (
-                <div className="min-h-screen bg-slate-50 text-slate-800 font-sans relative overflow-hidden select-none">
+                <div className="max-w-md mx-auto min-h-screen px-5 py-6 font-sans pb-24">
 
-                    {/* 顶部导航 */}
-                    <div className="bg-white shadow-sm sticky top-0 z-10 px-4 py-3 flex justify-between items-center">
-                        <div className="flex items-center gap-2">
-                            <div className="bg-indigo-600 p-1.5 rounded-lg">
-                                <TrendingUp className="w-5 h-5 text-white" />
+                    {/* 头部：标题与模式切换 */}
+                    <div className="flex justify-between items-center mb-5">
+                        <div className="flex items-center gap-3">
+                            <div>
+                                <h1 className="text-lg font-bold text-slate-900 tracking-tight flex items-center gap-2">
+                                    家庭劳动审计
+                                </h1>
                             </div>
-                            <h1 className="text-lg font-bold text-slate-900 tracking-tight">家务审计系统</h1>
                         </div>
-                        <button
-                            onClick={generateReport}
-                            className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 text-sm px-4 py-2 rounded-full font-medium transition-all shadow-sm active:scale-95 flex items-center gap-2"
-                        >
-                            <Sparkles className="w-4 h-4 text-indigo-500" />
-                            生成家务价值报告
-                        </button>
+
+                        <div className="flex bg-slate-100 p-1 rounded-full border border-slate-200">
+                            <button
+                                onClick={() => setMode('personal')}
+                                className={`px-3 py-1 text-xs rounded-full transition-all duration-300 font-bold ${mode === 'personal' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+                            >
+                                个人
+                            </button>
+                            <button
+                                onClick={() => setMode('family')}
+                                className={`px-3 py-1 text-xs rounded-full transition-all duration-300 font-bold ${mode === 'family' ? 'bg-white shadow-sm text-indigo-600' : 'text-slate-400 hover:text-slate-600'}`}
+                            >
+                                家庭
+                            </button>
+                        </div>
                     </div>
 
-                    <div className="p-4 max-w-md mx-auto space-y-6 pb-24">
+                    {/* 1. 总览卡片 */}
+                    <div className="bg-gradient-to-br from-[#4F46E5] to-[#7C3AED] rounded-[2rem] p-6 mb-6 text-white shadow-xl shadow-indigo-200/50 relative overflow-hidden transition-all duration-500">
+                        <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-[0.03] rounded-full blur-3xl -mr-20 -mt-20"></div>
+                        <div className="absolute bottom-0 left-0 w-40 h-40 bg-purple-400 opacity-[0.1] rounded-full blur-2xl -ml-10 -mb-10"></div>
 
-                        {/* 资产卡片 */}
-                        <div className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-6 text-white shadow-xl shadow-indigo-200 relative overflow-hidden">
-                            <div className="absolute top-0 right-0 p-4 opacity-10">
-                                <Wallet size={120} />
+                        {/* 顶栏 */}
+                        <div className="relative z-10 flex justify-between items-start mb-6">
+                            <div className="inline-flex items-center gap-1.5 bg-white/10 backdrop-blur-sm px-2.5 py-1 rounded-full border border-white/10">
+                                <div className="w-3 h-3 text-white/80">{Icons.Info}</div>
+                                <span className="text-[10px] text-white/80 font-medium">定价标准：北京市家政市场均价</span>
                             </div>
-                            <div className="relative z-10">
-                                <p className="text-indigo-100 text-sm font-medium mb-1 flex items-center gap-1">
-                                    累计劳动资产 (Labor Assets)
-                                    <span className="bg-white/20 text-white text-[10px] px-1.5 py-0.5 rounded ml-2 backdrop-blur-sm">北京基准</span>
-                                </p>
-                                <div className={`text-5xl font-bold tracking-tight mb-4 transition-transform ${isAnimating ? 'scale-110' : ''}`}>
-                                    ¥{totalAsset.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
+
+                            <button onClick={() => setShowSettings(!showSettings)} className="text-white/70 hover:text-white p-1 rounded-full hover:bg-white/10 transition">
+                                <div className="w-5 h-5">{Icons.Settings}</div>
+                            </button>
+                        </div>
+
+                        {/* 职业工时设置 */}
+                        {showSettings && (
+                            <div className="mb-5 bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/20 slide-down">
+                                <div className="flex justify-between items-center mb-3">
+                                    <p className="text-xs text-indigo-100 font-bold opacity-80 flex items-center gap-1">
+                                        <div className="w-3 h-3 bg-indigo-300 rounded-full animate-pulse"></div>
+                                        设置每日职业工时 (Job Hours)
+                                    </p>
                                 </div>
-                                <div className="flex gap-4 text-sm text-indigo-100">
-                                    <div className="bg-white/10 px-3 py-1.5 rounded-lg backdrop-blur-sm border border-white/10">
-                                        <span className="block text-xs text-indigo-200">累计工时</span>
-                                        <span className="font-semibold text-white">{totalHours.toFixed(1)}h</span>
-                                    </div>
-                                    <div className="bg-white/10 px-3 py-1.5 rounded-lg backdrop-blur-sm border border-white/10">
-                                        <span className="block text-xs text-indigo-200">贡献笔数</span>
-                                        <span className="font-semibold text-white">{records.length}笔</span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* 类别选择 */}
-                        <div>
-                            <h3 className="text-sm font-bold text-slate-500 mb-3 uppercase tracking-wider">选择劳动类别</h3>
-                            <div className="grid grid-cols-3 gap-3">
-                                {Object.entries(MARKET_RATES).map(([key, data]) => {
-                                    const Icon = data.icon;
-                                    const isSelected = selectedCategory === key;
-                                    return (
-                                        <button
-                                            key={key}
-                                            onClick={() => setSelectedCategory(key)}
-                                            className={`
-                                                relative p-3 rounded-xl flex flex-col items-center justify-center gap-2 transition-all border-2
-                                                ${isSelected
-                                                    ? 'border-indigo-500 bg-white shadow-md scale-105 z-10'
-                                                    : 'border-transparent bg-white shadow-sm hover:bg-slate-50'
-                                                }
-                                            `}
-                                        >
-                                            <div className={`p-2 rounded-full ${data.color}`}>
-                                                <Icon className="w-6 h-6" />
-                                            </div>
-                                            <div className="text-center">
-                                                <div className="font-bold text-sm text-slate-700">{data.label}</div>
-                                                <div className="text-[10px] text-slate-400">¥{data.rate}/时</div>
-                                            </div>
-                                            {isSelected && (
-                                                <div className="absolute top-2 right-2 w-2 h-2 bg-indigo-500 rounded-full animate-pulse" />
-                                            )}
-                                        </button>
-                                    );
-                                })}
-                            </div>
-                        </div>
-
-                        {/* 时间选择 */}
-                        <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-100">
-                            <div className="flex justify-between items-center mb-6">
-                                <h3 className="text-sm font-bold text-slate-500 uppercase tracking-wider">投入时长</h3>
-                                <span className="text-2xl font-bold text-indigo-600">{formatDuration(duration)}</span>
-                            </div>
-
-                            <input
-                                type="range"
-                                min="15"
-                                max="480"
-                                step="15"
-                                value={duration}
-                                onChange={(e) => setDuration(parseInt(e.target.value))}
-                                className="w-full h-3 bg-slate-200 rounded-lg appearance-none cursor-pointer accent-indigo-500"
-                            />
-                            <div className="flex justify-between text-xs text-slate-400 mt-3">
-                                <span>15分钟</span>
-                                <span>2小时</span>
-                                <span>4小时</span>
-                                <span>8小时</span>
-                            </div>
-                        </div>
-
-                        {/* 记账按钮 */}
-                        <button
-                            onClick={handleAddRecord}
-                            className="w-full bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white text-lg font-bold py-4 rounded-2xl shadow-lg shadow-indigo-200 transform transition active:scale-95 flex items-center justify-center gap-2"
-                        >
-                            <Plus className="w-6 h-6" />
-                            记入家庭账本 (+¥{(MARKET_RATES[selectedCategory].rate * duration / 60).toFixed(0)})
-                        </button>
-
-                        {/* 历史记录 */}
-                        <div className="pt-2">
-                            <h3 className="text-sm font-bold text-slate-500 mb-3 uppercase tracking-wider flex items-center gap-2">
-                                <History className="w-4 h-4" /> 近期审计记录
-                            </h3>
-                            <div className="space-y-3">
-                                {records.slice(0, 5).map((record) => {
-                                    const Icon = MARKET_RATES[record.category]?.icon || Sparkles;
-                                    return (
-                                        <div key={record.id} className="bg-white p-3 rounded-xl flex items-center justify-between shadow-sm border border-slate-50">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`p-2 rounded-full bg-slate-50 text-slate-500`}>
-                                                    <Icon className="w-5 h-5" />
-                                                </div>
-                                                <div>
-                                                    <div className="font-bold text-sm text-slate-800">{MARKET_RATES[record.category]?.label}</div>
-                                                    <div className="text-xs text-slate-400">{new Date(record.date).toLocaleDateString()} · {formatDuration(record.duration)}</div>
-                                                </div>
-                                            </div>
-                                            <div className="font-bold text-green-600">+¥{record.value.toFixed(0)}</div>
+                                <div className="flex gap-4">
+                                    <div className="flex-1 bg-black/20 rounded-xl p-2 px-3">
+                                        <label className="text-[10px] text-indigo-200 block mb-0.5">我</label>
+                                        <div className="flex items-center gap-1">
+                                            <input type="number" value={jobHours.me} onChange={e => setJobHours({...jobHours, me: Number(e.target.value)})} className="w-full bg-transparent border-0 text-white text-lg font-bold p-0 focus:ring-0"/>
+                                            <span className="text-xs opacity-50">h</span>
                                         </div>
-                                    );
-                                })}
-                                {records.length === 0 && (
-                                    <div className="text-center py-8 text-slate-400 text-sm italic">
-                                        暂无记录，快去记录你的第一次付出吧！
+                                    </div>
+                                    {mode === 'family' && (
+                                        <div className="flex-1 bg-black/20 rounded-xl p-2 px-3 slide-down">
+                                            <label className="text-[10px] text-indigo-200 block mb-0.5">伴侣</label>
+                                            <div className="flex items-center gap-1">
+                                                <input type="number" value={jobHours.partner} onChange={e => setJobHours({...jobHours, partner: Number(e.target.value)})} className="w-full bg-transparent border-0 text-white text-lg font-bold p-0 focus:ring-0"/>
+                                                <span className="text-xs opacity-50">h</span>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        <div className="relative z-10">
+                            <div className="flex justify-between items-end mb-8">
+                                <div>
+                                    <p className="text-indigo-200 text-[10px] font-bold uppercase tracking-wider mb-1">累计家务劳动产出价值</p>
+                                    <div className="text-5xl font-bold tracking-tight leading-none">
+                                        <span className="text-2xl align-top opacity-60 mr-1">¥</span>
+                                        {(stats.me.totalValue).toLocaleString()}
+                                    </div>
+                                </div>
+                                <div className="text-right bg-white/10 px-3 py-1.5 rounded-lg backdrop-blur-sm">
+                                     <p className="text-indigo-200 text-[10px] font-bold uppercase tracking-wider">总劳动时长</p>
+                                     <div className="text-xl font-bold">{stats.me.totalTime.toFixed(1)} <span className="text-xs font-normal opacity-70">h</span></div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-4">
+                                {/* Me Section */}
+                                <div className="relative">
+                                    <div className="flex justify-between text-xs mb-1.5 font-medium text-indigo-50">
+                                        <span>我</span>
+                                        <span className="opacity-80">¥{stats.me.totalValue.toFixed(0)}</span>
+                                    </div>
+                                    <div className="h-2.5 w-full bg-black/20 rounded-full overflow-hidden flex">
+                                        <div style={{width: `${(stats.me.job / 24) * 100}%`}} className="h-full bg-white/20"></div>
+                                        <div style={{width: `${(stats.me.home / 24) * 100}%`}} className="h-full bg-white shadow-[0_0_10px_rgba(255,255,255,0.4)]"></div>
+                                    </div>
+                                </div>
+
+                                {/* Partner Section (Family Mode Only) */}
+                                {mode === 'family' && (
+                                    <div className="relative slide-down">
+                                        <div className="flex justify-between text-xs mb-1.5 font-medium text-indigo-50">
+                                            <span>伴侣</span>
+                                            <span className="opacity-80">¥{stats.partner.totalValue.toFixed(0)}</span>
+                                        </div>
+                                        <div className="h-2.5 w-full bg-black/20 rounded-full overflow-hidden flex">
+                                            <div style={{width: `${(stats.partner.job / 24) * 100}%`}} className="h-full bg-white/20"></div>
+                                            <div style={{width: `${(stats.partner.home / 24) * 100}%`}} className="h-full bg-rose-400"></div>
+                                        </div>
                                     </div>
                                 )}
                             </div>
                         </div>
-
                     </div>
 
-                    {/* 报告弹窗 */}
-                    {showReport && reportContent && (
-                        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-in">
-                            <div className="bg-white w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl animate-in">
-                                <div className="bg-gradient-to-r from-indigo-500 to-purple-600 p-6 text-center text-white relative">
-                                    <button
-                                        onClick={() => setShowReport(false)}
-                                        className="absolute top-4 right-4 text-white/70 hover:text-white"
-                                    >
-                                        <X className="w-6 h-6" />
+                    {/* 2. 智能分配方案 (仅家庭模式) */}
+                    {mode === 'family' && (
+                        <div className="mb-8 slide-down">
+                            {!showAllocation ? (
+                                <button
+                                    onClick={() => setShowAllocation(true)}
+                                    className="w-full py-4 bg-white border border-slate-100 rounded-2xl text-slate-600 font-bold text-sm shadow-sm flex items-center justify-between px-5 hover:bg-slate-50 transition-all group tap-effect"
+                                >
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center group-hover:scale-110 transition-transform">
+                                            <div className="w-4 h-4">{Icons.Scale}</div>
+                                        </div>
+                                        <span className="text-slate-700">生成智能分配方案</span>
+                                    </div>
+                                    <div className="text-slate-400 group-hover:translate-x-1 transition-transform">
+                                        <div className="w-4 h-4">{Icons.ArrowRight}</div>
+                                    </div>
+                                </button>
+                            ) : (
+                                <div className="bg-white border border-slate-100 rounded-[1.5rem] p-5 shadow-lg shadow-slate-200/50 slide-down relative overflow-hidden">
+                                    <button onClick={() => setShowAllocation(false)} className="absolute top-4 right-4 text-slate-300 hover:text-slate-600 p-1">
+                                        <span className="text-xs font-bold">收起</span>
                                     </button>
-                                    <div className="inline-block p-3 bg-white/20 rounded-full mb-3">
-                                        <FileText className="w-8 h-8 text-white" />
-                                    </div>
-                                    <h2 className="text-2xl font-bold">家庭劳动价值报告</h2>
-                                    <div className="inline-block px-2 py-0.5 mt-2 bg-white/20 rounded text-xs font-medium border border-white/20">
-                                        主要贡献：{reportContent.dominantType}
-                                    </div>
-                                </div>
 
-                                <div className="p-6">
-                                    <div className="grid grid-cols-2 gap-4 mb-6">
-                                        <div className="bg-slate-50 p-4 rounded-xl text-center border border-slate-100">
-                                            <div className="text-xs text-slate-500 mb-1">审计总估值</div>
-                                            <div className="text-xl font-bold text-indigo-600">¥{reportContent.totalValue}</div>
-                                        </div>
-                                        <div className="bg-slate-50 p-4 rounded-xl text-center border border-slate-100">
-                                            <div className="text-xs text-slate-500 mb-1">贡献时长</div>
-                                            <div className="text-xl font-bold text-slate-800">{reportContent.totalHours}h</div>
-                                        </div>
-                                    </div>
-
-                                    <div className="mb-6">
-                                        <h4 className="font-bold text-slate-800 mb-3 flex items-center gap-2">
-                                            <Sparkles className="w-4 h-4 text-amber-500" />
-                                            AI 情感审计意见
-                                        </h4>
-                                        <div className="bg-indigo-50 p-5 rounded-xl text-sm text-indigo-900 leading-relaxed text-justify border border-indigo-100 relative shadow-inner">
-                                            <span className="text-5xl text-indigo-200/50 absolute -top-3 -left-2 font-serif">“</span>
-                                            <div className="relative z-10 text-slate-700 font-medium">
-                                                {reportContent.praise}
+                                    {allocationPlan.status === 'imbalanced' ? (
+                                        <>
+                                            <div className="flex items-center gap-2 mb-6">
+                                                <div className="p-2 bg-rose-50 text-rose-500 rounded-xl">
+                                                    <div className="w-5 h-5">{Icons.Scale}</div>
+                                                </div>
+                                                <div>
+                                                    <h3 className="font-bold text-slate-800">劳动负荷失衡</h3>
+                                                    <p className="text-xs text-slate-400">剪刀差: {allocationPlan.diff}小时</p>
+                                                </div>
                                             </div>
-                                            <span className="text-5xl text-indigo-200/50 absolute -bottom-8 right-0 font-serif">”</span>
+                                            <div className="space-y-3">
+                                                {allocationPlan.suggestions.map((sugg, i) => (
+                                                    <div key={i} className="flex gap-3 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                                                        <div className={`w-1 shrink-0 rounded-full ${i===0?'bg-indigo-500':i===1?'bg-purple-500':'bg-emerald-500'}`}></div>
+                                                        <div>
+                                                            <div className="text-xs font-bold text-slate-700 mb-0.5">{sugg.title}</div>
+                                                            <div className="text-xs text-slate-500 leading-normal">{sugg.desc}</div>
+                                                        </div>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <div className="text-center py-6">
+                                            <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                                                <div className="w-6 h-6">{Icons.Sparkles}</div>
+                                            </div>
+                                            <h3 className="font-bold text-slate-800 mb-1">完美平衡</h3>
+                                            <p className="text-xs text-slate-500">双方劳动负荷差距极小，继续保持！</p>
                                         </div>
-                                    </div>
-
-                                    <div className="text-center text-xs text-slate-400 mb-6">
-                                        * 估值基于当前市场参考价，情感价值无价
-                                    </div>
-
-                                    <button
-                                        onClick={() => {
-                                           alert("已生成精美海报，正在唤起分享...");
-                                        }}
-                                        className="w-full bg-slate-800 hover:bg-slate-700 text-white font-bold py-3 rounded-xl flex items-center justify-center gap-2 transition-colors shadow-lg"
-                                    >
-                                        <Share2 className="w-4 h-4" />
-                                        分享给家庭成员
-                                    </button>
+                                    )}
                                 </div>
-                            </div>
+                            )}
                         </div>
                     )}
+
+                    {/* 3. 记录面板 (带自定义功能) */}
+                    <div className="bg-white rounded-[2rem] p-6 shadow-sm border border-slate-100 mb-6">
+                        <div className="flex justify-between items-center mb-6">
+                            <h3 className="text-sm font-bold text-slate-700">
+                                记录新付出
+                            </h3>
+                            <button
+                                onClick={() => setIsEditingCats(!isEditingCats)}
+                                className={`text-xs px-2 py-1 rounded transition-colors ${isEditingCats ? 'bg-indigo-100 text-indigo-600 font-bold' : 'text-slate-400 hover:text-slate-600 bg-slate-50'}`}
+                            >
+                                {isEditingCats ? '完成' : '管理类别'}
+                            </button>
+                        </div>
+
+                        {/* 类别 Grid */}
+                        <div className="grid grid-cols-3 gap-3 mb-8">
+                            {visibleCategories.map(cat => {
+                                const isSelected = selectedCat?.id === cat.id;
+                                return (
+                                    <div key={cat.id} className="relative">
+                                        <button
+                                            onClick={() => setSelectedCat(cat)}
+                                            className={`
+                                                w-full flex flex-col items-center justify-center py-3 px-2 rounded-xl transition-all duration-200 border-2 relative
+                                                ${isSelected
+                                                    ? `bg-indigo-50 border-indigo-500 shadow-md`
+                                                    : 'bg-white border-slate-100 hover:border-slate-300'
+                                                }
+                                                ${isEditingCats ? 'opacity-70 pointer-events-none' : ''}
+                                            `}
+                                        >
+                                            <span className={`text-sm font-bold mb-1 ${isSelected ? 'text-indigo-700' : 'text-slate-600'}`}>
+                                                {cat.label}
+                                            </span>
+                                            <span className={`text-[10px] ${isSelected ? 'text-indigo-500' : 'text-slate-400'}`}>
+                                                ¥{cat.rate}/时
+                                            </span>
+                                        </button>
+
+                                        {/* 删除按钮 */}
+                                        {isEditingCats && (
+                                            <button
+                                                onClick={(e) => { e.stopPropagation(); handleDeleteCategory(cat.id); }}
+                                                className="absolute -top-2 -right-2 w-6 h-6 bg-rose-500 text-white rounded-full flex items-center justify-center shadow-md animate-bounce"
+                                            >
+                                                <div className="w-3 h-3">{Icons.Trash}</div>
+                                            </button>
+                                        )}
+                                    </div>
+                                )
+                            })}
+
+                            {/* 添加按钮 */}
+                            <button
+                                onClick={() => setShowAddCat(true)}
+                                className="flex flex-col items-center justify-center py-3 px-2 rounded-xl border-2 border-dashed border-slate-300 hover:border-indigo-400 hover:bg-indigo-50 transition-all text-slate-400 hover:text-indigo-500"
+                            >
+                                <div className="w-6 h-6 mb-1">{Icons.Plus}</div>
+                                <span className="text-[10px] font-bold">自定义</span>
+                            </button>
+                        </div>
+
+                        {/* 添加类别弹窗 (内嵌) */}
+                        {showAddCat && (
+                            <div className="mb-8 p-4 bg-slate-50 rounded-xl border border-slate-200 slide-down">
+                                <h4 className="text-xs font-bold text-slate-600 mb-3">添加新类别</h4>
+                                <div className="flex gap-2 mb-3">
+                                    <input
+                                        type="text"
+                                        placeholder="名称 (如: 遛狗)"
+                                        value={newCatName}
+                                        onChange={e => setNewCatName(e.target.value)}
+                                        className="flex-1 text-xs p-2 rounded border border-slate-300 focus:border-indigo-500 outline-none"
+                                    />
+                                    <input
+                                        type="number"
+                                        placeholder="时薪"
+                                        value={newCatRate}
+                                        onChange={e => setNewCatRate(e.target.value)}
+                                        className="w-16 text-xs p-2 rounded border border-slate-300 focus:border-indigo-500 outline-none"
+                                    />
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={handleAddCategory} className="flex-1 bg-indigo-600 text-white text-xs py-2 rounded font-bold">确认添加</button>
+                                    <button onClick={() => setShowAddCat(false)} className="flex-1 bg-slate-200 text-slate-600 text-xs py-2 rounded font-bold">取消</button>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* 时长与按钮 */}
+                        <div className="bg-slate-50 rounded-2xl p-1 border border-slate-100">
+                            <div className="px-4 pt-4 pb-2">
+                                <div className="flex justify-between items-end mb-4">
+                                    <div className="text-right ml-auto">
+                                        <span className="text-3xl font-bold text-slate-800 tabular-nums">{tempDuration}</span>
+                                        <span className="text-xs text-slate-400 ml-1 font-medium">min</span>
+                                    </div>
+                                </div>
+
+                                <input
+                                    type="range" min="15" max="240" step="15"
+                                    value={tempDuration}
+                                    onChange={e => setTempDuration(Number(e.target.value))}
+                                    className="w-full mb-4"
+                                />
+                            </div>
+
+                            <button
+                                onClick={confirmAdd}
+                                className="w-full py-4 rounded-xl font-bold text-white shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2 bg-gradient-to-r from-indigo-600 to-violet-600 shadow-indigo-200"
+                            >
+                                <span className="text-sm">计入账本</span>
+                                <div className="w-px h-3 bg-white/20 mx-1"></div>
+                                <span className="text-sm opacity-90">+¥{currentEstimateValue}</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* 4. 账本明细 */}
+                    <div>
+                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 px-2">
+                            {mode === 'personal' ? '我的明细' : '今日明细'}
+                        </h3>
+                        <div className="space-y-3">
+                            {displayRecords.length === 0 ? (
+                                <p className="text-center text-sm text-slate-300 py-8 italic">今天还没有记录哦</p>
+                            ) : (
+                                displayRecords.slice(0, 5).map(r => {
+                                    // 查找类别，如果是删除的类别可能找不到，给个默认值
+                                    let cat = categories.find(c => c.id === r.category);
+                                    // 如果类别被删除了，给一个临时展示对象
+                                    if (!cat) cat = { label: "已删类别", icon: Icons.Star, bgCol: "bg-slate-200", textCol: "text-slate-500" };
+
+                                    const isMe = r.user === 'me';
+                                    return (
+                                        <div key={r.id} className="flex items-center justify-between p-4 bg-white rounded-2xl border border-slate-50 shadow-sm slide-down group hover:border-indigo-50 transition-colors">
+                                            <div className="flex items-center gap-4">
+                                                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${cat?.bgCol} ${cat?.textCol}`}>
+                                                    <div className="w-5 h-5">{cat?.icon}</div>
+                                                </div>
+                                                <div>
+                                                    <div className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                                                        {cat?.label}
+                                                        {!isMe && <span className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded font-medium">伴侣</span>}
+                                                    </div>
+                                                    <div className="text-xs text-slate-400 mt-0.5">{r.duration}分钟</div>
+                                                </div>
+                                            </div>
+                                            <div className="font-bold text-slate-800 text-sm bg-slate-50 px-3 py-1 rounded-lg group-hover:bg-emerald-50 group-hover:text-emerald-600 transition-colors">
+                                                +¥{r.value.toFixed(0)}
+                                            </div>
+                                        </div>
+                                    )
+                                })
+                            )}
+                        </div>
+                    </div>
 
                 </div>
             );
         }
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<FamilyLaborAudit />);
+        root.render(<App />);
     </script>
 </body>
 </html>
